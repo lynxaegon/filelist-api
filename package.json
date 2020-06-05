@@ -1,0 +1,29 @@
+{
+  "name": "filelist-api",
+  "version": "1.0.2",
+  "description": "A FileList API Wrapper made using Node.js",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lynxaegon/filelist-api.git"
+  },
+  "author": "Andrei Vaduva",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lynxaegon/filelist-api/issues"
+  },
+  "keywords": [
+    "filelist",
+    "api"
+  ],
+  "homepage": "https://github.com/lynxaegon/filelist-api#README",
+  "dependencies": {
+    "axios": "^0.19.2",
+    "axios-cookiejar-support": "^1.0.0",
+    "cheerio": "^1.0.0-rc.3",
+    "tough-cookie-file-store": "^2.0.2"
+  }
+}
