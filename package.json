@@ -21,7 +21,7 @@
   ],
   "homepage": "https://github.com/lynxaegon/filelist-api#README",
   "dependencies": {
-    "axios": "^0.19.2",
+    "axios": "^0.21.1",
     "axios-cookiejar-support": "^1.0.0",
     "cheerio": "^1.0.0-rc.3",
     "tough-cookie-file-store": "^2.0.2"
