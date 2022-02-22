@@ -8,7 +8,13 @@ it uses cookies.json to keep your cookies for future requests
 
 ``` js
 const FileList = new (require('filelist-api'))([username], [password]);
+FileList.search("Stargate").then(result => {
+    FileList.download(result[0].torrentFile);
+});
+```
 
+Login is automatic, but if you want to manually login:
+``` js
 FileList.login().then(() => {
     FileList.search("Stargate").then(result => {
         FileList.download(result[0].torrentFile);
