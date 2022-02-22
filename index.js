@@ -11,6 +11,7 @@ const _private = {
     obj: {
         user: Symbol('username'),
         pass: Symbol('password'),
+        loginPromise: Symbol('login promise'),
         options: Symbol('options')
     },
     fnc: {
@@ -21,7 +22,7 @@ let axios;
 
 function cfDecodeEmail(encodedString) {
     var email = "", r = parseInt(encodedString.substr(0, 2), 16), n, i;
-    for (n = 2; encodedString.length - n; n += 2){
+    for (n = 2; encodedString.length - n; n += 2) {
         i = parseInt(encodedString.substr(n, 2), 16) ^ r;
         email += String.fromCharCode(i);
     }
@@ -32,6 +33,7 @@ module.exports = class FileList {
     constructor(username, password, opts) {
         this[_private.obj.user] = username;
         this[_private.obj.pass] = password;
+        this[_private.obj.loginPromise] = null;
         this[_private.obj.options] = Object.assign({
             SCHEME: "https",
             HOSTNAME: "filelist.io"
@@ -69,6 +71,11 @@ module.exports = class FileList {
                 },
                 params: options
             }).then(res => {
+                if (res.request.path.match(/^\/login/)) {
+                    return this.login().then(() => {
+                        this.search(query, options).then(resolve).catch(reject);
+                    }).catch(reject)
+                }
                 const $ = cheerio.load(res.data);
                 let torrents = [];
                 $(".torrentrow").each((key, item) => {
@@ -80,7 +87,7 @@ module.exports = class FileList {
                     let peer = $(".torrenttable:nth-child(10)", item).text();
                     let path = $(".torrenttable:nth-child(2) a", item).attr("href");
                     let img = $(".torrenttable:nth-child(2) a", item).attr("title");
-                    if(img.match(/^<img/)){
+                    if (img.match(/^<img/)) {
                         img = $(img).attr("src");
                     } else {
                         img = "";
@@ -88,7 +95,7 @@ module.exports = class FileList {
                     let id = querystring.parse(path.split("?")[1]).id;
 
                     let emailProtection = $(".__cf_email__", item).attr('data-cfemail');
-                    if(emailProtection){
+                    if (emailProtection) {
                         title = cfDecodeEmail(emailProtection);
                     }
 
@@ -110,7 +117,7 @@ module.exports = class FileList {
                 let totalPages = 0;
                 $(".pager a").each((key, item) => {
                     let page = parseInt($(item).text());
-                    if(page > totalPages)
+                    if (page > totalPages)
                         totalPages = page;
                 });
                 resolve({
@@ -123,26 +130,28 @@ module.exports = class FileList {
     }
 
     login() {
-        return new Promise((resolve, reject) => {
+        if (this[_private.obj.loginPromise]) {
+            return this[_private.obj.loginPromise];
+        }
+        this[_private.obj.loginPromise] = new Promise((resolve, reject) => {
             axios.get(this[_private.obj.options].BASE_URL + "/my.php").then(res => {
-                if(res.request.path.match(/login.php/)) {
+                if (res.request.path.match(/^\/login/)) {
                     const $ = cheerio.load(res.data);
                     axios.post(this[_private.obj.options].BASE_URL + "/takelogin.php", querystring.stringify({
                         validator: $("[name=validator]").val(),
                         username: this[_private.obj.user],
                         password: this[_private.obj.pass],
                         returnto: "/"
-                    }) ,{
+                    }), {
                         headers: {
                             "Referer": this[_private.obj.options].BASE_URL + "/login.php",
                             'Content-Type': 'application/x-www-form-urlencoded'
                         }
                     }).then((res) => {
-                        if(res.data.trim() !== ""){
+                        if (res.data.trim() !== "" && !res.request.path.match(/^\/takelogin/)) {
                             resolve();
-                        }
-                        else {
-                            reject();
+                        } else {
+                            reject(res);
                         }
                     }).catch(reject);
                 } else {
@@ -150,33 +159,39 @@ module.exports = class FileList {
                 }
             }).catch(reject);
         });
+        this[_private.obj.loginPromise].finally(() => {
+            this[_private.obj.loginPromise] = null;
+        });
+        return this[_private.obj.loginPromise];
     }
 
     [_private.fnc.genHash]() {
         let current_date = (new Date()).valueOf().toString();
         let random = Math.random().toString();
 
-        return crypto.createHash('sha1').update(current_date + random).digest('hex')+'.torrent';
+        return crypto.createHash('sha1').update(current_date + random).digest('hex') + '.torrent';
     }
 
     download(torrentUrl, downloadFolder) {
         downloadFolder = downloadFolder || "./tmp";
         return new Promise((resolve, reject) => {
             const path = downloadFolder + "/" + this[_private.fnc.genHash]();
-            if(!fs.existsSync(downloadFolder)){
+            if (!fs.existsSync(downloadFolder)) {
                 fs.mkdirSync(downloadFolder);
             }
 
-            const stream = fs.createWriteStream(path);
-            stream.on('close', function() {
-                resolve(path);
-            });
             axios.get(torrentUrl, {
-                responseType:'stream'
+                responseType: 'arraybuffer'
             }).then(res => {
-                res.data.pipe(stream);
-            })
-            .catch(err => console.log(err));
+                if (res.request.path.match(/^\/login/)) {
+                    return this.login().then(() => {
+                        this.download(torrentUrl, downloadFolder).then(resolve).catch(reject);
+                    }).catch(reject)
+                }
+
+                fs.writeFileSync(path, res.data);
+                resolve(path);
+            }).catch(reject);
         });
     }
 };
