@@ -76,18 +76,21 @@ module.exports = class FileList {
                         this.search(query, options).then(resolve).catch(reject);
                     }).catch(reject)
                 }
+
                 const $ = cheerio.load(res.data);
                 let torrents = [];
                 $(".torrentrow").each((key, item) => {
                     let cat = $(".torrenttable:nth-child(1) img", item).attr("alt");
-                    let title = $(".torrenttable:nth-child(2) a", item).text().trim();
+                    let title = $(".torrenttable:nth-child(2) a", item).attr("title").trim();
                     let date = $(".torrenttable:nth-child(6) .small", item).html().split("<br>")[1];
                     let size = $(".torrenttable:nth-child(7)", item).text();
                     let seed = $(".torrenttable:nth-child(9)", item).text();
                     let peer = $(".torrenttable:nth-child(10)", item).text();
                     let path = $(".torrenttable:nth-child(2) a", item).attr("href");
-                    let img = $(".torrenttable:nth-child(2) a", item).attr("title");
-                    if (img.match(/^<img/)) {
+                    let img = $(".torrenttable:nth-child(2) span[data-toggle='tooltip']", item).attr("title");
+                    let freeleech = $(".torrenttable:nth-child(2) [alt='FreeLeech']", item).length > 0
+
+                    if (img && img.match(/^<img/)) {
                         img = $(img).attr("src");
                     } else {
                         img = "";
@@ -103,6 +106,7 @@ module.exports = class FileList {
                         id: id,
                         cat: cat,
                         title: title,
+                        freeleech: !!freeleech,
                         url: this[_private.obj.options].BASE_URL + "/" + path,
                         torrentFile: this[_private.obj.options].BASE_URL + "/download.php?id=" + id,
                         image: img,
