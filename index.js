@@ -64,6 +64,27 @@ module.exports = class FileList {
             sort: 0,
             page: 0
         }, options);
+
+
+        if(Array.isArray(options.cat)) {
+            return new Promise((resolve, reject) => {
+                let categories = options.cat;
+                let promises = [];
+                for(let cat of categories) {
+                    promises.push(
+                        this.search(query, Object.assign(options, {
+                            cat: cat
+                        }))
+                    );
+                }
+                Promise.all(promises).then((results) => {
+                    resolve(results)
+                }).catch((e) => {
+                    console.log("ERR:", e)
+                });
+            });
+        }
+
         return new Promise((resolve, reject) => {
             axios.get(this[_private.obj.options].BASE_URL + "/browse.php", {
                 headers: {
@@ -126,6 +147,7 @@ module.exports = class FileList {
                 });
                 resolve({
                     torrents: torrents,
+                    category: options.cat,
                     page: options.page,
                     totalPages: totalPages
                 });
