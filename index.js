@@ -47,7 +47,7 @@ module.exports = class FileList {
                 "Cache-Control": "max-age=0",
                 "Origin": this[_private.obj.options].BASE_URL,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/83.0.4103.97 Safari/537.36",
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36",
                 "Accept-Encoding": "gzip, deflate",
                 "Accept-Language": "en-US,en;q=0.8,ro;q=0.6"
             }
@@ -151,6 +151,31 @@ module.exports = class FileList {
                     page: options.page,
                     totalPages: totalPages
                 });
+            }).catch(reject);
+        });
+    }
+
+    getIMDB(torrentId) {
+        return new Promise((resolve, reject) => {
+            axios.get(this[_private.obj.options].BASE_URL + "/details.php", {
+                headers: {
+                    "Referer": this[_private.obj.options].BASE_URL + "/browse.php"
+                },
+                params: {
+                    id: torrentId
+                }
+            }).then(res => {
+                if (res.request.path.match(/^\/login/)) {
+                    return this.login().then(() => {
+                        this.get(torrentId).then(resolve).catch(reject);
+                    }).catch(reject)
+                }
+
+                const match = res.data.match(/imdb.com\/title\/(tt\d+)/);
+                if(match) {
+                    return resolve(match[1]);
+                }
+                return resolve(null);
             }).catch(reject);
         });
     }
